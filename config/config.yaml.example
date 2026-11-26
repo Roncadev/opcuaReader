@@ -1,0 +1,35 @@
+# Tipi database (dt_type) e porte di default:
+# 1 - MSSQL 1433
+# 2 - MariaDB 3306
+# 3 - MySql 3306
+# 4 - PostgreSQL 5432
+# Nota: se ometti "port:" viene usata la porta di default del dt_type; 
+#       se la specifichi, viene usata quella.
+
+
+destination_database:
+  database: cobrakai_OPCUA
+  dt_type: 1
+  host: YOUR_DB_HOST
+  password: YOUR_DB_PASSWORD
+  port: 1422
+  user: sa
+opcua:
+  client:
+    anonymous: true
+    commessa: PLEXTA
+    deadband_global: 1.0
+    password: '99999999'
+    read_interval_seconds: 15
+    read_records: 10
+    run_mode: normal
+    security_mode: None
+    security_policy: None
+    subscription_publishing_interval_ms: 3000
+    subscription_sampling_interval_ms: 3000
+    url: opc.tcp://10.0.0.1:4840/
+    username: Admin
+  server:
+    ip: 10.0.0.1
+    port: 4840
+    url: opc.tcp://127.0.0.1:4840/freeopcua/server/

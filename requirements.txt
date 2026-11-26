@@ -1,0 +1,10 @@
+asyncua
+cryptography
+pyyaml
+markdown
+textual
+openpyxl
+rich>=14.2.0
+pymysql
+pyodbc
+mysql-connector-python
