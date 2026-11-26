@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import os
 import socket
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 APP_URI = "urn:AINIMA:OPCUA:VariablesReader"   # tool of the colleague, distinct from the plant client
 APP_NAME = "AINIMA OPC UA VariablesReader"
@@ -62,7 +62,7 @@ def generate_client_certificate(root: str | None = None, days: int = CERT_DAYS, 
     exists = os.path.exists(cert_path) or os.path.exists(key_path)
     if exists and not force:
         raise FileExistsError("pki/ already has a client certificate: use force=True to replace it")
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     if exists:
         stamp = now.strftime("%Y%m%d_%H%M%S")
         for p in (cert_path, key_path, der_path):
@@ -106,12 +106,12 @@ def generate_client_certificate(root: str | None = None, days: int = CERT_DAYS, 
 def _not_after(cert):
     # cryptography < 42 has only the naive not_valid_after
     v = getattr(cert, "not_valid_after_utc", None)
-    return v if v is not None else cert.not_valid_after.replace(tzinfo=timezone.utc)
+    return v if v is not None else cert.not_valid_after.replace(tzinfo=UTC)
 
 
 def _not_before(cert):
     v = getattr(cert, "not_valid_before_utc", None)
-    return v if v is not None else cert.not_valid_before.replace(tzinfo=timezone.utc)
+    return v if v is not None else cert.not_valid_before.replace(tzinfo=UTC)
 
 
 def certificate_info(data: bytes) -> dict:

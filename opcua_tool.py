@@ -23,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from app.utils import opcua_security as sec  # noqa: E402
+from app.utils import opcua_security as sec
 
 
 def _client_cfg() -> dict:
@@ -104,8 +104,9 @@ def cmd_save_server_cert(args):
 
 
 async def _test(url, cfg):
-    from app.utils.opcua_utils import OPCUAExplorer
     from asyncua import ua
+
+    from app.utils.opcua_utils import OPCUAExplorer
     raw = next((v for k, v in cfg.items() if isinstance(k, str) and k.lower() == "autenticazione"), False)
     auth = str(raw).strip().lower() in ("1", "true", "yes", "si", "sì", "on")
     username = str(cfg.get("username", "") or "").strip() if auth else ""

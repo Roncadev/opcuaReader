@@ -1,23 +1,35 @@
 import asyncio
 import concurrent.futures
 import csv
-import logging
-import re
-import os
 import json
+import logging
+import os
+import re
 import time
-from datetime import datetime, timedelta
-from rich.markup import escape as rich_escape
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Tree, Static, Button, Input, Label, ListView, ListItem, RichLog, Checkbox, RadioSet, RadioButton
-from textual.containers import Container, Horizontal, Vertical, Grid
-from textual.screen import Screen
-from textual.binding import Binding
-from textual import on, work
-from textual.reactive import reactive
+from datetime import datetime
 
-from config.config import ConfigLoader
+from rich.markup import escape as rich_escape
+from textual import on, work
+from textual.app import App, ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
+from textual.widgets import (
+    Button,
+    Footer,
+    Header,
+    Input,
+    Label,
+    ListItem,
+    ListView,
+    RadioButton,
+    RadioSet,
+    RichLog,
+    Static,
+    Tree,
+)
+
 from app.utils.opcua_utils import OPCUAExplorer
+from config.config import ConfigLoader
 
 # Configurazione logging per Textual (evita che scriva su stdout)
 # Forza la riconfigurazione per essere sicuri che nessuno scriva su stdout
@@ -77,9 +89,9 @@ if os.path.exists(current_log):
 
 # Configura il logging con il nuovo nome base
 logging.basicConfig(
-    level=logging.INFO, 
-    filename=current_log, 
-    filemode="w", 
+    level=logging.INFO,
+    filename=current_log,
+    filemode="w",
     force=True,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
@@ -160,7 +172,7 @@ class ConfigScreen(Screen):
         config = self.config_loader.get_config()
         server = config.get('opcua', {}).get('server', {})
         client = config.get('opcua', {}).get('client', {})
-        
+
         self.query_one("#ip_input", Input).value = str(server.get('ip', ''))
         self.query_one("#port_input", Input).value = str(server.get('port', ''))
         self.query_one("#url_input", Input).value = str(client.get('url', ''))
@@ -175,16 +187,16 @@ class ConfigScreen(Screen):
         self.query_one("#sub_publish_ms_input", Input).value = str(client.get("subscription_publishing_interval_ms", 3000))
         self.query_one("#sub_sampling_ms_input", Input).value = str(client.get("subscription_sampling_interval_ms", 3000))
         self.query_one("#deadband_global_input", Input).value = str(client.get("deadband_global", 1.0))
-        
+
         self.query_one("#user_input", Input).value = str(client.get('username', ''))
         self.query_one("#pass_input", Input).value = str(client.get('password', ''))
-        
+
         # Carica Security Mode
         mode = client.get('security_mode', 'None')
         if mode == 'None': self.query_one("#mode_none", RadioButton).value = True
         elif mode == 'Sign': self.query_one("#mode_sign", RadioButton).value = True
         elif mode == 'Sign & Encrypt': self.query_one("#mode_sign_encrypt", RadioButton).value = True
-        
+
         # Carica Security Policy
         policy = client.get('security_policy', 'None')
         if policy == 'None': self.query_one("#policy_none", RadioButton).value = True
@@ -201,7 +213,7 @@ class ConfigScreen(Screen):
         self.query_one("#pass_input", Input).disabled = anonymous
         self.query_one("#user_label", Label).visible = not anonymous
         self.query_one("#pass_label", Label).visible = not anonymous
-        
+
         # La sezione sicurezza rimane visibile perché contiene i selettori
         self.query_one("#policy_set", RadioSet).disabled = anonymous
 
@@ -237,11 +249,11 @@ class ConfigScreen(Screen):
             if match:
                 new_ip = match.group(1)
                 new_port = match.group(2)
-                
+
                 ip_input = self.query_one("#ip_input", Input)
                 if ip_input.value != new_ip:
                     ip_input.value = new_ip
-                
+
                 if new_port:
                     port_input = self.query_one("#port_input", Input)
                     if port_input.value != new_port:
@@ -262,32 +274,32 @@ class ConfigScreen(Screen):
         sub_publish_ms_raw = self.query_one("#sub_publish_ms_input", Input).value
         sub_sampling_ms_raw = self.query_one("#sub_sampling_ms_input", Input).value
         deadband_global_raw = self.query_one("#deadband_global_input", Input).value
-        
+
         # Recupera Security Mode e Policy selezionata
         mode_set = self.query_one("#mode_set", RadioSet)
         security_mode = "None"
         if mode_set.pressed_button:
             security_mode = str(mode_set.pressed_button.label)
-        
+
         # Se mode è None, allora è anonimo
         anonymous = (security_mode == "None")
-        
+
         username = self.query_one("#user_input", Input).value
         password = self.query_one("#pass_input", Input).value
-        
+
         security_policy = "None"
         if not anonymous:
             policy_set = self.query_one("#policy_set", RadioSet)
             if policy_set.pressed_button:
                 security_policy = str(policy_set.pressed_button.label)
-        
+
         config = self.config_loader.get_config()
         config['opcua']['server']['ip'] = ip
         try:
             config['opcua']['server']['port'] = int(port)
         except ValueError:
             pass
-        
+
         config['opcua']['client']['url'] = url
         config['opcua']['client']['commessa'] = commessa
         try:
@@ -300,8 +312,7 @@ class ConfigScreen(Screen):
             read_records = int(str(read_records_raw).strip() or "0")
         except ValueError:
             read_records = 0
-        if read_records < 0:
-            read_records = 0
+        read_records = max(read_records, 0)
         config['opcua']['client']['read_interval_seconds'] = read_interval_seconds
         config['opcua']['client']['read_records'] = read_records
         config['opcua']['client']['run_mode'] = run_mode
@@ -331,7 +342,7 @@ class ConfigScreen(Screen):
         config['opcua']['client']['password'] = password
         config['opcua']['client']['security_mode'] = security_mode
         config['opcua']['client']['security_policy'] = security_policy
-        
+
         if self.config_loader.save_config(config):
             self.notify("Configurazione salvata!", severity="information")
         else:
@@ -436,7 +447,7 @@ class BrowserScreen(Screen):
         self.log_handler = TextualHandler(log_panel)
         formatter = logging.Formatter('%(levelname)s: %(message)s')
         self.log_handler.setFormatter(formatter)
-        
+
         # Aggiunge l'handler sia al logger globale che a quello di asyncua
         logging.getLogger().addHandler(self.log_handler)
         logging.getLogger("asyncua").addHandler(self.log_handler)
@@ -467,20 +478,20 @@ class BrowserScreen(Screen):
         tree = self.query_one(Tree)
         details_panel = self.query_one("#details-panel", Static)
         log_panel = self.query_one("#log-panel", RichLog)
-        
+
         # Piccolo ritardo per permettere il rendering della UI
         await asyncio.sleep(0.5)
-        
+
         try:
             log_panel.write("[bold cyan]>>> Inizio procedura di connessione...[/bold cyan]")
             # Stato caricamento nel pannello dettagli (evitiamo notifiche di sistema se possibile)
             msg = f"Tentativo di connessione a {self.explorer.url}..."
             details_panel.update(f"[bold yellow]{msg}[/bold yellow]")
-            
+
             # Connessione
-            if not self.explorer.connected: 
+            if not self.explorer.connected:
                  await self.explorer.connect()
-            
+
             # Carica figli di root
             try:
                 self.root_node = self.explorer.client.nodes.root
@@ -493,16 +504,16 @@ class BrowserScreen(Screen):
 
             await self.expand_node(tree.root, self.root_node)
             tree.root.expand()
-            
+
             # Se la connessione va a buon fine, nascondi log e non mostrare notifiche
             log_panel.display = "none"
             success_msg = "Connesso con successo al PLC!"
             details_panel.update(f"[bold green]{success_msg}[/bold green]\n\nSeleziona un nodo nell'albero a sinistra per vederne i dettagli.")
-            
+
         except ConnectionError as e:
             import logging
             logging.getLogger("cobrakai_OPCUA_Browser").error(f"Eccezione durante la connessione: {e}", exc_info=True)
-            error_msg = f"ERRORE DI CONNESSIONE:\n\n[bold red]{str(e)}[/bold red]\n\n[yellow]Suggerimenti:[/yellow]\n1. Verifica che l'URL sia corretto\n2. Controlla Username e Password\n3. Assicurati che il PLC sia raggiungibile via rete"
+            error_msg = f"ERRORE DI CONNESSIONE:\n\n[bold red]{e!s}[/bold red]\n\n[yellow]Suggerimenti:[/yellow]\n1. Verifica che l'URL sia corretto\n2. Controlla Username e Password\n3. Assicurati che il PLC sia raggiungibile via rete"
             self.notify("Errore di connessione (vedi dettagli)", severity="error", timeout=10)
             details_panel.update(error_msg)
         except Exception as e:
@@ -519,16 +530,16 @@ class BrowserScreen(Screen):
             for child in children:
                 # Crea etichetta nodo: [Class] Name
                 label = f"[{child['class']}] {child['name']}"
-                
+
                 # Aggiungi al tree
                 new_node = tree_node.add(
                     label,
                     data={"node": child["node"], "name": child["name"], "class": child["class"]},
                     allow_expand=True,
                 )
-                
-                # Se non ha figli (es. Variabile semplice), potremmo disabilitare expand, 
-                # ma browse_children controlla già. 
+
+                # Se non ha figli (es. Variabile semplice), potremmo disabilitare expand,
+                # ma browse_children controlla già.
                 # Per performance, non carichiamo ricorsivamente qui.
         except Exception as e:
             tree_node.add(f"Errore: {e}")
@@ -556,12 +567,12 @@ class BrowserScreen(Screen):
                 self.selected_node_name = data.get("name")
             details = f"[bold]Nome:[/bold] {node.label}\n"
             details += f"[bold]ID:[/bold] {opcua_node.nodeid}\n"
-            
+
             if isinstance(data, dict):
                 node_class_name = str(data.get("class", "") or "")
                 if node_class_name:
                     details += f"[bold]Classe:[/bold] {node_class_name}\n"
-            
+
             self.query_one("#details-panel", Static).update(details)
 
     def action_export_variables(self) -> None:
@@ -1140,8 +1151,7 @@ class BrowserScreen(Screen):
         s = s.replace(']."', "_")
         s = s.replace('[', "_")
         s = s.replace(']', "")
-        if s.endswith('"'):
-            s = s[:-1]
+        s = s.removesuffix('"')
         return s
 
     def _make_s7_protocol_name_from_node_id(self, node_id: str) -> str:
@@ -1173,10 +1183,8 @@ class BrowserScreen(Screen):
 
     def _make_table_name_from_variabili_json(self, variabili_json_path: str) -> str:
         base = os.path.splitext(os.path.basename(variabili_json_path))[0]
-        if base.endswith("_Variabili"):
-            base = base[: -len("_Variabili")]
-        if base.startswith("OPCUA_"):
-            base = base[len("OPCUA_") :]
+        base = base.removesuffix("_Variabili")
+        base = base.removeprefix("OPCUA_")
         base = re.sub(r"[^0-9A-Za-z_]+", "_", base).strip("_")
         if not base:
             base = "OPCUA_Table"
@@ -1188,7 +1196,7 @@ class BrowserScreen(Screen):
         if not os.path.exists(variabili_json_path):
             return [], f"file non trovato: {variabili_json_path}"
         try:
-            with open(variabili_json_path, "r", encoding="utf-8") as f:
+            with open(variabili_json_path, encoding="utf-8") as f:
                 payload = json.load(f)
         except Exception as e:
             return [], f"impossibile leggere json: {type(e).__name__}: {e}"
@@ -2378,8 +2386,7 @@ class BrowserScreen(Screen):
                     )
                     try:
                         l = len(str(v)) if v is not None else 0
-                        if l > s7_max_len:
-                            s7_max_len = l
+                        s7_max_len = max(s7_max_len, l)
                     except Exception:
                         pass
                 elif k == "opcuasoglia":
@@ -2404,8 +2411,7 @@ class BrowserScreen(Screen):
 
         if s7_max_len > 0:
             auto_w = float(s7_max_len) + 2.0
-            if auto_w < 16:
-                auto_w = 16
+            auto_w = max(auto_w, 16)
             ws.column_dimensions[get_column_letter(s7_col_idx)].width = auto_w
 
         body_alignment = Alignment(vertical="top", wrap_text=False)
@@ -2564,8 +2570,7 @@ class BrowserScreen(Screen):
                     read_records = int(str(client_cfg.get("read_records", 0)).strip() or "0")
                 except ValueError:
                     read_records = 0
-                if read_records < 0:
-                    read_records = 0
+                read_records = max(read_records, 0)
                 run_mode = str(client_cfg.get("run_mode", "normal") or "normal").strip().lower()
                 debug_subscription = run_mode == "debug"
                 try:
@@ -2844,7 +2849,7 @@ class BrowserScreen(Screen):
                                 if remaining > 0:
                                     await asyncio.wait_for(self._stop_read_event.wait(), timeout=remaining)
                                     break
-                            except asyncio.TimeoutError:
+                            except TimeoutError:
                                 pass
                 finally:
                     try:
@@ -3250,15 +3255,15 @@ class MainMenu(Screen):
         password = client_config.get('password')
         security_mode = client_config.get('security_mode', 'None')
         security_policy = client_config.get('security_policy', 'None')
-        
+
         if not url:
             self.notify("URL non configurato!", severity="error")
             return
 
         explorer = OPCUAExplorer(
-            url, 
-            anonymous=anonymous, 
-            username=username, 
+            url,
+            anonymous=anonymous,
+            username=username,
             password=password,
             security_mode=security_mode,
             security_policy=security_policy
@@ -3332,7 +3337,7 @@ class OPCUAClientApp(App):
         height: 1;
     }
     """
-    
+
     BINDINGS = [("q", "quit", "Esci")]
 
     def action_quit(self) -> None:
@@ -3352,8 +3357,8 @@ if __name__ == "__main__":
     # Logger dedicato per i messaggi di lifecycle
     lifecycle_logger = logging.getLogger("cobrakai_OPCUA_Browser")
     lifecycle_logger.info("--> OPCUA Browser - START  <--")
-    
+
     app = OPCUAClientApp()
     app.run()
-    
+
     lifecycle_logger.info("--> OPCUA Browser - STOP  <--")

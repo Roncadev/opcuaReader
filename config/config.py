@@ -1,5 +1,7 @@
-import yaml
 import os
+
+import yaml
+
 
 class ConfigLoader:
     def __init__(self, config_file="config.yaml"):
@@ -55,8 +57,8 @@ class ConfigLoader:
             except Exception:
                 pass
             return default_config
-        
-        with open(self.config_path, 'r') as file:
+
+        with open(self.config_path) as file:
             try:
                 return yaml.safe_load(file)
             except yaml.YAMLError as exc:
