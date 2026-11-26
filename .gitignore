@@ -150,3 +150,7 @@ OPCUA_Nodes/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Webapp frontend
+webapp/frontend/node_modules/
+webapp/frontend/dist/
