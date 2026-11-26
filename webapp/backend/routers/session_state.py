@@ -97,16 +97,24 @@ class SessionState:
         password = client_cfg.get('password', '')
         commessa = client_cfg.get('commessa', '')
 
+        security_mode = client_cfg.get('security_mode', 'None')
+        security_policy = client_cfg.get('security_policy', 'None')
+
         await self.broadcast({'type': 'log', 'text': f'[{_ts()}] Connessione a {url}...', 'level': 'info'})
 
         try:
-            from asyncua import Client
-            client = Client(url=url, timeout=15)
-            if not anonymous and username:
-                client.set_user(username)
-                client.set_password(password)
-
-            async with client:
+            from app.utils.opcua_utils import OPCUAExplorer
+            explorer = OPCUAExplorer(
+                url=url,
+                anonymous=anonymous,
+                username=username,
+                password=password,
+                security_mode=security_mode,
+                security_policy=security_policy,
+            )
+            await explorer.connect()
+            client = explorer.client
+            try:
                 await self.broadcast({'type': 'log', 'text': f'[{_ts()}] Connesso — {len(nodes)} variabili', 'level': 'info'})
 
                 while not stop.is_set():
@@ -144,6 +152,9 @@ class SessionState:
                         countdown -= 1
 
                     await self.broadcast({'type': 'progress', 'read_count': self.read_count, 'next_read_in': 0})
+
+            finally:
+                await explorer.disconnect()
 
         except Exception as e:
             self.last_error = str(e)

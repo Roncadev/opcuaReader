@@ -38,23 +38,25 @@ class DbCfg(BaseModel):
     password: str = ''
 
 
-async def _opcua_connect(cfg: OpcuaCfg):
-    from asyncua import Client
-    client = Client(url=cfg.url, timeout=10)
-    if not cfg.anonymous and cfg.username:
-        client.set_user(cfg.username)
-        client.set_password(cfg.password)
-    return client
-
-
 @router.post('/connection/test-opcua')
 async def test_opcua(cfg: OpcuaCfg) -> dict:
     try:
-        client = await _opcua_connect(cfg)
-        async with client:
-            node = client.get_node('i=2258')
+        from app.utils.opcua_utils import OPCUAExplorer
+        explorer = OPCUAExplorer(
+            url=cfg.url,
+            anonymous=cfg.anonymous,
+            username=cfg.username,
+            password=cfg.password,
+            security_mode=cfg.security_mode,
+            security_policy=cfg.security_policy,
+        )
+        await explorer.connect()
+        try:
+            node = explorer.client.get_node('i=2258')
             server_time = await node.read_value()
             return {'ok': True, 'message': f'Connesso — ora server: {server_time}'}
+        finally:
+            await explorer.disconnect()
     except Exception as e:
         return {'ok': False, 'message': str(e)}
 

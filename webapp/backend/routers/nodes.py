@@ -43,14 +43,19 @@ class SaveNodesRequest(BaseModel):
 @router.post('/nodes/browse')
 async def browse_node(req: BrowseRequest) -> dict:
     try:
-        from asyncua import Client, ua
-        client = Client(url=req.cfg.url, timeout=10)
-        if not req.cfg.anonymous and req.cfg.username:
-            client.set_user(req.cfg.username)
-            client.set_password(req.cfg.password)
-
-        async with client:
-            node = client.get_node(req.node_id)
+        from asyncua import ua
+        from app.utils.opcua_utils import OPCUAExplorer
+        explorer = OPCUAExplorer(
+            url=req.cfg.url,
+            anonymous=req.cfg.anonymous,
+            username=req.cfg.username,
+            password=req.cfg.password,
+            security_mode=req.cfg.security_mode,
+            security_policy=req.cfg.security_policy,
+        )
+        await explorer.connect()
+        try:
+            node = explorer.client.get_node(req.node_id)
             children = await node.get_children()
             result = []
             for child in children:
@@ -61,14 +66,14 @@ async def browse_node(req: BrowseRequest) -> dict:
                         ua.AttributeIds.BrowseName,
                     ])
                     node_class = attrs[0].Value.Value
-                    display_name = str(attrs[1].Value.Value)
-                    browse_name = str(attrs[2].Value.Value)
+                    dn_val = attrs[1].Value.Value
+                    display_name = dn_val.Text if hasattr(dn_val, 'Text') else str(dn_val)
+                    bn_val = attrs[2].Value.Value
+                    browse_name = bn_val.Name if hasattr(bn_val, 'Name') else str(bn_val)
 
-                    # Conta i figli per sapere se è espandibile
                     sub_children = await child.get_children()
                     has_children = len(sub_children) > 0
 
-                    # Tipo dato (solo per Variable)
                     data_type = None
                     if node_class == ua.NodeClass.Variable:
                         try:
@@ -81,13 +86,15 @@ async def browse_node(req: BrowseRequest) -> dict:
                         'node_id': str(child.nodeid),
                         'display_name': display_name,
                         'browse_name': browse_name,
-                        'node_class': getattr(node_class, 'name', str(node_class)),
+                        'node_class': node_class.name if hasattr(node_class, 'name') else ua.NodeClass(node_class).name if isinstance(node_class, int) else str(node_class),
                         'has_children': has_children,
                         'data_type': data_type
                     })
                 except Exception:
                     pass
             return {'nodes': result}
+        finally:
+            await explorer.disconnect()
     except Exception as e:
         return {'nodes': [], 'error': str(e)}
 

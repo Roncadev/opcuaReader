@@ -17,7 +17,9 @@ from __future__ import annotations
 import hashlib
 import os
 import socket
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+UTC = timezone.utc
 
 APP_URI = "urn:AINIMA:OPCUA:VariablesReader"   # tool of the colleague, distinct from the plant client
 APP_NAME = "AINIMA OPC UA VariablesReader"
