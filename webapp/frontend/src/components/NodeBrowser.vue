@@ -18,6 +18,7 @@ interface TreeNode extends OpcuaNode {
 const roots = ref<TreeNode[]>([])
 const loading = ref(false)
 const error = ref('')
+const toggleError = ref('')
 
 const ROOT_NODE = 'i=84'
 
@@ -47,11 +48,20 @@ async function toggle(node: TNode) {
   tnode.expanded = true
   if (tnode.loaded) return
   tnode.loading = true
+  toggleError.value = ''
   try {
     const res = await store.browseNode(tnode.node_id)
-    if (!res.error) tnode.children = res.nodes.map(makeTree) as TreeNode[]
-  } catch { /* ignora */ }
-  finally {
+    console.log('[toggle] browse result:', tnode.node_id, res)
+    if (res.error) {
+      toggleError.value = `Errore espansione: ${res.error}`
+    } else {
+      tnode.children = res.nodes.map(makeTree) as TreeNode[]
+      console.log('[toggle] children set:', tnode.children.length)
+    }
+  } catch (err) {
+    toggleError.value = `Eccezione espansione: ${err instanceof Error ? err.message : String(err)}`
+    console.error('[toggle] exception:', err)
+  } finally {
     tnode.loading = false
     tnode.loaded = true
   }
@@ -86,8 +96,8 @@ onMounted(loadRoots)
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="mb-3 px-3 py-2 bg-red-900/30 border border-red-700 rounded text-red-400 text-xs font-mono">
-      {{ error }}
+    <div v-if="error || toggleError" class="mb-3 px-3 py-2 bg-red-900/30 border border-red-700 rounded text-red-400 text-xs font-mono">
+      {{ error || toggleError }}
     </div>
 
     <!-- Loading -->

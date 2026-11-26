@@ -132,7 +132,7 @@ async def browse_node(req: BrowseRequest) -> dict:
                         data_type = 'Unknown'
 
                 result.append({
-                    'node_id': str(child.nodeid),
+                    'node_id': child.nodeid.to_string(),
                     'display_name': display_name,
                     'browse_name': browse_name,
                     'node_class': node_class.name if hasattr(node_class, 'name') else ua.NodeClass(node_class).name if isinstance(node_class, int) else str(node_class),
